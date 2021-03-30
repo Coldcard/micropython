@@ -26,17 +26,36 @@
 
 #include "py/runtime.h"
 #include "py/mphal.h"
+#include "lib/utils/pyexec.h"
 #include "extmod/machine_i2c.h"
 #include "extmod/machine_mem.h"
+#include "extmod/machine_pulse.h"
+#include "extmod/machine_signal.h"
 #include "extmod/machine_spi.h"
 
 #include "modmachine.h"
+#include "uart.h"
 #include "hardware/clocks.h"
 #include "hardware/watchdog.h"
 #include "pico/bootrom.h"
+#include "pico/stdlib.h"
+#include "pico/unique_id.h"
 
 #define RP2_RESET_PWRON (1)
 #define RP2_RESET_WDT (3)
+
+STATIC mp_obj_t machine_unique_id(void) {
+    pico_unique_board_id_t id;
+    pico_get_unique_board_id(&id);
+    return mp_obj_new_bytes(id.id, sizeof(id.id));
+}
+MP_DEFINE_CONST_FUN_OBJ_0(machine_unique_id_obj, machine_unique_id);
+
+STATIC mp_obj_t machine_soft_reset(void) {
+    pyexec_system_exit = PYEXEC_FORCED_EXIT;
+    mp_raise_type(&mp_type_SystemExit);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_soft_reset_obj, machine_soft_reset);
 
 STATIC mp_obj_t machine_reset(void) {
     watchdog_reboot(0, SRAM_END, 0);
@@ -64,17 +83,78 @@ STATIC mp_obj_t machine_bootloader(void) {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(machine_bootloader_obj, machine_bootloader);
 
-STATIC mp_obj_t machine_freq(void) {
-    return MP_OBJ_NEW_SMALL_INT(clock_get_hz(clk_sys));
+STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
+    if (n_args == 0) {
+        return MP_OBJ_NEW_SMALL_INT(clock_get_hz(clk_sys));
+    } else {
+        mp_int_t freq = mp_obj_get_int(args[0]);
+        if (!set_sys_clock_khz(freq / 1000, false)) {
+            mp_raise_ValueError(MP_ERROR_TEXT("cannot change frequency"));
+        }
+        #if MICROPY_HW_ENABLE_UART_REPL
+        setup_default_uart();
+        mp_uart_init();
+        #endif
+        return mp_const_none;
+    }
 }
-MP_DEFINE_CONST_FUN_OBJ_0(machine_freq_obj, machine_freq);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_freq_obj, 0, 1, machine_freq);
+
+STATIC mp_obj_t machine_idle(void) {
+    best_effort_wfe_or_timeout(make_timeout_time_ms(1));
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
+
+STATIC mp_obj_t machine_lightsleep(size_t n_args, const mp_obj_t *args) {
+    if (n_args == 0) {
+        for (;;) {
+            MICROPY_EVENT_POLL_HOOK
+        }
+    } else {
+        mp_hal_delay_ms(mp_obj_get_int(args[0]));
+    }
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_lightsleep_obj, 0, 1, machine_lightsleep);
+
+STATIC mp_obj_t machine_deepsleep(size_t n_args, const mp_obj_t *args) {
+    machine_lightsleep(n_args, args);
+    return machine_reset();
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
+
+STATIC mp_obj_t machine_disable_irq(void) {
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
+    return mp_obj_new_int(state);
+}
+MP_DEFINE_CONST_FUN_OBJ_0(machine_disable_irq_obj, machine_disable_irq);
+
+STATIC mp_obj_t machine_enable_irq(mp_obj_t state_in) {
+    uint32_t state = mp_obj_get_int(state_in);
+    MICROPY_END_ATOMIC_SECTION(state);
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(machine_enable_irq_obj, machine_enable_irq);
 
 STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__),            MP_ROM_QSTR(MP_QSTR_umachine) },
+    { MP_ROM_QSTR(MP_QSTR_unique_id),           MP_ROM_PTR(&machine_unique_id_obj) },
+    { MP_ROM_QSTR(MP_QSTR_soft_reset),          MP_ROM_PTR(&machine_soft_reset_obj) },
     { MP_ROM_QSTR(MP_QSTR_reset),               MP_ROM_PTR(&machine_reset_obj) },
     { MP_ROM_QSTR(MP_QSTR_reset_cause),         MP_ROM_PTR(&machine_reset_cause_obj) },
     { MP_ROM_QSTR(MP_QSTR_bootloader),          MP_ROM_PTR(&machine_bootloader_obj) },
     { MP_ROM_QSTR(MP_QSTR_freq),                MP_ROM_PTR(&machine_freq_obj) },
+
+    { MP_ROM_QSTR(MP_QSTR_idle),                MP_ROM_PTR(&machine_idle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_lightsleep),          MP_ROM_PTR(&machine_lightsleep_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deepsleep),           MP_ROM_PTR(&machine_deepsleep_obj) },
+
+    { MP_ROM_QSTR(MP_QSTR_disable_irq),         MP_ROM_PTR(&machine_disable_irq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_enable_irq),          MP_ROM_PTR(&machine_enable_irq_obj) },
+
+    { MP_ROM_QSTR(MP_QSTR_time_pulse_us),       MP_ROM_PTR(&machine_time_pulse_us_obj) },
+
     { MP_ROM_QSTR(MP_QSTR_mem8),                MP_ROM_PTR(&machine_mem8_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem16),               MP_ROM_PTR(&machine_mem16_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem32),               MP_ROM_PTR(&machine_mem32_obj) },
@@ -84,6 +164,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_SoftI2C),             MP_ROM_PTR(&mp_machine_soft_i2c_type) },
     { MP_ROM_QSTR(MP_QSTR_Pin),                 MP_ROM_PTR(&machine_pin_type) },
     { MP_ROM_QSTR(MP_QSTR_PWM),                 MP_ROM_PTR(&machine_pwm_type) },
+    { MP_ROM_QSTR(MP_QSTR_Signal),              MP_ROM_PTR(&machine_signal_type) },
     { MP_ROM_QSTR(MP_QSTR_SPI),                 MP_ROM_PTR(&machine_spi_type) },
     { MP_ROM_QSTR(MP_QSTR_SoftSPI),             MP_ROM_PTR(&mp_machine_soft_spi_type) },
     { MP_ROM_QSTR(MP_QSTR_Timer),               MP_ROM_PTR(&machine_timer_type) },
