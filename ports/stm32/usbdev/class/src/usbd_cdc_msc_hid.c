@@ -1240,6 +1240,7 @@ uint8_t USBD_CDC_ReceivePacket(usbd_cdc_state_t *cdc, uint8_t *buf) {
 // prepare OUT endpoint for reception
 uint8_t USBD_HID_ReceivePacket(usbd_hid_state_t *hid, uint8_t *buf) {
     // Suspend or Resume USB Out process
+    if (!hid || !hid->usbd || !hid->usbd->pdev) return USBD_FAIL;
 
     #if !USBD_SUPPORT_HS_MODE
     if (hid->usbd->pdev->dev_speed == USBD_SPEED_HIGH) {
@@ -1257,10 +1258,12 @@ uint8_t USBD_HID_ReceivePacket(usbd_hid_state_t *hid, uint8_t *buf) {
 }
 
 int USBD_HID_CanSendReport(usbd_hid_state_t *hid) {
+    if (!hid || !hid->usbd || !hid->usbd->pdev) return 0;
     return hid->usbd->pdev->dev_state == USBD_STATE_CONFIGURED && hid->state == HID_IDLE;
 }
 
 uint8_t USBD_HID_SendReport(usbd_hid_state_t *hid, uint8_t *report, uint16_t len) {
+    if (!hid || !hid->usbd || !hid->usbd->pdev) return USBD_FAIL;
     if (hid->usbd->pdev->dev_state == USBD_STATE_CONFIGURED) {
         if (hid->state == HID_IDLE) {
             hid->state = HID_BUSY;

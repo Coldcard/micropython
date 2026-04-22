@@ -803,6 +803,16 @@ void mp_usbd_ll_init(void);
 
 #define MICROPY_HW_USES_BOOTLOADER (MICROPY_HW_VTOR != 0x08000000)
 
+// Expose the CSD and CID values from the card inserted, via pyb.SDCard.ident() function
+#ifndef MICROPY_HW_ENABLE_CARD_IDENT
+#define MICROPY_HW_ENABLE_CARD_IDENT (0)
+#endif
+
+// drivers/dht ... a specific enviro sensor of some sort
+#ifndef MICROPY_HW_ENABLE_DHT
+#define MICROPY_HW_ENABLE_DHT        (1)
+#endif
+
 #ifndef MICROPY_HW_ETH_DMA_ATTRIBUTE
 #define MICROPY_HW_ETH_DMA_ATTRIBUTE __attribute__((aligned(16384)));
 #endif

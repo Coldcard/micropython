@@ -107,6 +107,10 @@
 #if defined(STM32H5) || defined(STM32H7) || defined(STM32N6)
 #define SDIO_TRANSFER_CLK_DIV               SDMMC_HSPEED_CLK_DIV
 #define SDIO_USE_GPDMA                      0
+#elif defined(STM32L4P5xx) || defined(STM32L4Q5xx) || defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
+// L4+ family: SDMMC has internal DMA, no external DMA controller needed
+#define SDIO_USE_GPDMA                      0
+#define SDIO_TRANSFER_CLK_DIV               SDMMC_TRANSFER_CLK_DIV
 #else
 #define SDIO_TRANSFER_CLK_DIV               SDMMC_TRANSFER_CLK_DIV
 #define SDIO_USE_GPDMA                      1
@@ -270,7 +274,7 @@ static HAL_StatusTypeDef sdmmc_init_sd(void) {
     // SD device interface configuration
     sdmmc_handle.sd.Instance = SDIO;
     sdmmc_handle.sd.Init.ClockEdge = SDIO_CLOCK_EDGE_RISING;
-    #if !defined(STM32H5) && !defined(STM32H7) && !defined(STM32N6)
+    #if !defined(STM32H5) && !defined(STM32H7) && !defined(STM32N6) && !defined(STM32L4S5xx)
     sdmmc_handle.sd.Init.ClockBypass = SDIO_CLOCK_BYPASS_DISABLE;
     #endif
     sdmmc_handle.sd.Init.ClockPowerSave = SDIO_CLOCK_POWER_SAVE_ENABLE;
@@ -794,6 +798,35 @@ static mp_obj_t sd_info(mp_obj_t self) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(sd_info_obj, sd_info);
 
+#if MICROPY_HW_ENABLE_CARD_IDENT
+static mp_obj_t sd_card_ident(mp_obj_t self) {
+    if (!(pyb_sdmmc_flags & PYB_SDMMC_FLAG_ACTIVE)) {
+        mp_raise_ValueError(MP_ERROR_TEXT("no card"));
+    }
+
+    uint32_t *CSD;
+    uint32_t *CID;
+
+    #if MICROPY_HW_ENABLE_MMCARD
+    if (pyb_sdmmc_flags & PYB_SDMMC_FLAG_MMC) {
+        CSD = sdmmc_handle.mmc.CSD;
+        CID = sdmmc_handle.mmc.CID;
+    } else
+    #endif
+    {
+        CSD = sdmmc_handle.sd.CSD;
+        CID = sdmmc_handle.sd.CID;
+    }
+
+    mp_obj_t tuple[2] = {
+        mp_obj_new_bytes((const uint8_t *)CSD, 16),
+        mp_obj_new_bytes((const uint8_t *)CID, 16),
+    };
+    return mp_obj_new_tuple(2, tuple);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(sd_ident_obj, sd_card_ident);
+#endif
+
 // now obsolete, kept for backwards compatibility
 static mp_obj_t sd_read(mp_obj_t self, mp_obj_t block_num) {
     uint8_t *dest = m_new(uint8_t, SDCARD_BLOCK_SIZE);
@@ -875,6 +908,9 @@ static const mp_rom_map_elem_t pyb_sdcard_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_present), MP_ROM_PTR(&sd_present_obj) },
     { MP_ROM_QSTR(MP_QSTR_power), MP_ROM_PTR(&sd_power_obj) },
     { MP_ROM_QSTR(MP_QSTR_info), MP_ROM_PTR(&sd_info_obj) },
+    #if MICROPY_HW_ENABLE_CARD_IDENT
+    { MP_ROM_QSTR(MP_QSTR_ident), MP_ROM_PTR(&sd_ident_obj) },
+    #endif
     { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&sd_read_obj) },
     { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&sd_write_obj) },
     // block device protocol
@@ -910,9 +946,7 @@ void sdcard_init_vfs(fs_user_mount_t *vfs, int part) {
     vfs->base.type = &mp_fat_vfs_type;
     vfs->blockdev.flags |= MP_BLOCKDEV_FLAG_NATIVE | MP_BLOCKDEV_FLAG_HAVE_IOCTL;
     vfs->fatfs.drv = vfs;
-    #if MICROPY_FATFS_MULTI_PARTITION
     vfs->fatfs.part = part;
-    #endif
     vfs->blockdev.readblocks[0] = MP_OBJ_FROM_PTR(&pyb_sdcard_readblocks_obj);
     vfs->blockdev.readblocks[1] = MP_OBJ_FROM_PTR(&pyb_sdcard_obj);
     vfs->blockdev.readblocks[2] = MP_OBJ_FROM_PTR(sdcard_read_blocks); // native version

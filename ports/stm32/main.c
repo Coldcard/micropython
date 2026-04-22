@@ -356,9 +356,11 @@ void stm32_main(uint32_t reset_mode) {
     SCB->CCR |= SCB_CCR_STKALIGN_Msk;
     #endif
 
+    #if 0
     // Hook for a board to run code at start up, for example check if a
     // bootloader should be entered instead of the main application.
     MICROPY_BOARD_STARTUP();
+    #endif
 
     // Enable caches and prefetch buffers
 

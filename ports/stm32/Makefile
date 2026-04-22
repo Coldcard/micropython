@@ -388,6 +388,9 @@ HAL_SRC_C += $(addprefix $(STM32LIB_HAL_BASE)/Src/stm32$(MCU_SERIES)xx_,\
 	ll_sdmmc.c \
 	ll_fmc.c \
 	)
+ifeq ($(MCU_SERIES),$(filter $(MCU_SERIES),h7 l4))
+HAL_SRC_C += $(STM32LIB_HAL_BASE)/Src/stm32$(MCU_SERIES)xx_hal_sd_ex.c
+endif
 ifeq ($(MCU_SERIES),$(filter $(MCU_SERIES),h5))
 # HAL H5-1.0.0 has a bug with uninitialised variable in HAL_SD_ConfigWideBusOperation.
 $(BUILD)/$(STM32LIB_HAL_BASE)/Src/stm32$(MCU_SERIES)xx_hal_sd.o: CFLAGS += -Wno-error=maybe-uninitialized

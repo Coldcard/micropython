@@ -134,6 +134,23 @@ static const flash_layout_t flash_layout[] = {
 };
 #endif
 
+#elif defined(STM32L4S5xx)
+
+// as defined stm32lib/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_flash.h
+// - operating in single-bank mode (DBANK=0), total 2M; 8k pages
+// Use the homogeneous form: the get_bank() / get_page() code path below
+// (for L4 with SYSCFG_MEMRMP_FB_MODE) references FLASH_LAYOUT_START_ADDR
+// and FLASH_LAYOUT_SECTOR_SIZE, so the layout must be expressed as macros.
+// Alternative (non-homogeneous array) approach kept here for reference:
+// #define FLASH_LAYOUT_IS_HOMOGENEOUS (0)
+// static const flash_layout_t flash_layout[] = {
+//     { (uint32_t)FLASH_BASE, 0x2000, (2<<20)/0x2000 },
+// };
+#define FLASH_LAYOUT_IS_HOMOGENEOUS (1)
+#define FLASH_LAYOUT_START_ADDR     (FLASH_BASE)
+#define FLASH_LAYOUT_SECTOR_SIZE    (0x2000)
+#define FLASH_LAYOUT_NUM_SECTORS    ((2 << 20) / 0x2000)
+
 #elif defined(STM32G0) || defined(STM32G4) || defined(STM32L0) || defined(STM32L4) || defined(STM32WB) || defined(STM32WL)
 
 #define FLASH_LAYOUT_IS_HOMOGENEOUS (1)
