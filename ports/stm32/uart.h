@@ -110,6 +110,8 @@ static inline bool uart_tx_avail(machine_uart_obj_t *self) {
     return self->uartx->SR & USART_SR_TXE;
     #elif defined(STM32G0) || defined(STM32H7) || defined(STM32WL)
     return self->uartx->ISR & USART_ISR_TXE_TXFNF;
+    #elif defined(UART_FLAG_TXFNF)
+    return self->uartx->ISR & UART_FLAG_TXFNF;      // TXFIFO not full
     #else
     return self->uartx->ISR & USART_ISR_TXE;
     #endif

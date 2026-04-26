@@ -49,12 +49,13 @@ int8_t usbd_hid_receive(usbd_hid_state_t *hid_in, size_t len) {
 int usbd_hid_rx(usbd_hid_itf_t *hid, size_t len, uint8_t *buf, uint32_t timeout_ms) {
     // Wait for an incoming report
     uint32_t t0 = mp_hal_ticks_ms();
-    while (hid->report_in_len == USBD_HID_REPORT_INVALID) {
+    while (hid->report_in_len == USBD_HID_REPORT_INVALID || !hid->base.usbd) {
         if (mp_hal_ticks_ms() - t0 >= timeout_ms || query_irq() == IRQ_STATE_DISABLED) {
             return -MP_ETIMEDOUT;
         }
         mp_event_wait_ms(1);
     }
+    assert(hid->base.usbd);
 
     // Copy bytes from report to user buffer
     int n = MIN(len, hid->report_in_len);

@@ -41,7 +41,7 @@
 #if defined(STM32F4) || defined(STM32L1)
 #define UART_RXNE_IS_SET(uart) ((uart)->SR & USART_SR_RXNE)
 #else
-#if defined(STM32G0) || defined(STM32H7) || defined(STM32WL)
+#if defined(STM32G0) || defined(STM32H7) || defined(STM32WL) || (defined(STM32L4) && defined(USART_ISR_RXNE_RXFNE))
 #define USART_ISR_RXNE USART_ISR_RXNE_RXFNE
 #endif
 #define UART_RXNE_IS_SET(uart) ((uart)->ISR & USART_ISR_RXNE)
@@ -105,6 +105,17 @@
 #define USART_CR1_IE_ALL (USART_CR1_IE_BASE)
 #define USART_CR2_IE_ALL (USART_CR2_IE_BASE)
 #define USART_CR3_IE_ALL (USART_CR3_IE_BASE)
+
+#elif defined(STM32L4) && defined(USART_CR1_FIFOEN)
+// L4+ series has a FIFO
+#define USART_CR1_IE_ALL (USART_CR1_IE_BASE | USART_CR1_EOBIE | USART_CR1_RTOIE | USART_CR1_CMIE)
+#define USART_CR2_IE_ALL (USART_CR2_IE_BASE)
+#define USART_CR3_IE_ALL (USART_CR3_IE_BASE)
+
+#undef USART_CR1_TXEIE
+#define USART_CR1_TXEIE     USART_CR1_TXEIE_TXFNFIE
+#undef USART_CR1_RXNEIE
+#define USART_CR1_RXNEIE    USART_CR1_RXNEIE_RXFNEIE
 
 #elif defined(STM32L4) || defined(STM32WB) || defined(STM32WL)
 #define USART_CR1_IE_ALL (USART_CR1_IE_BASE | USART_CR1_EOBIE | USART_CR1_RTOIE | USART_CR1_CMIE)
@@ -1062,14 +1073,14 @@ uint32_t uart_get_baudrate(machine_uart_obj_t *self) {
     #if defined(LPUART1)
     if (self->uart_id == PYB_LPUART_1) {
         return LL_LPUART_GetBaudRate(self->uartx, uart_get_source_freq(self)
-            #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
+            #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL) || (defined(STM32L4) && defined(USART_PRESC_PRESCALER))
             , self->uartx->PRESC
             #endif
             );
     }
     #endif
     return LL_USART_GetBaudRate(self->uartx, uart_get_source_freq(self),
-        #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
+        #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL) || (defined(STM32L4) && defined(USART_PRESC_PRESCALER))
         self->uartx->PRESC,
         #endif
         LL_USART_OVERSAMPLING_16);
@@ -1079,7 +1090,7 @@ void uart_set_baudrate(machine_uart_obj_t *self, uint32_t baudrate) {
     #if defined(LPUART1)
     if (self->uart_id == PYB_LPUART_1) {
         LL_LPUART_SetBaudRate(self->uartx, uart_get_source_freq(self),
-            #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
+            #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL) || (defined(STM32L4) && defined(USART_PRESC_PRESCALER))
             LL_LPUART_PRESCALER_DIV1,
             #endif
             baudrate);
@@ -1087,7 +1098,7 @@ void uart_set_baudrate(machine_uart_obj_t *self, uint32_t baudrate) {
     }
     #endif
     LL_USART_SetBaudRate(self->uartx, uart_get_source_freq(self),
-        #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
+        #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL) || (defined(STM32L4) && defined(USART_PRESC_PRESCALER))
         LL_USART_PRESCALER_DIV1,
         #endif
         LL_USART_OVERSAMPLING_16, baudrate);

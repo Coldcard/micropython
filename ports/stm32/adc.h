@@ -34,7 +34,7 @@ extern const mp_obj_type_t pyb_adc_all_type;
 void adc_config(ADC_TypeDef *adc, uint32_t bits);
 uint32_t adc_config_and_read_u16(ADC_TypeDef *adc, uint32_t channel, uint32_t sample_time);
 
-#if defined(ADC_CHANNEL_VBAT)
+#if defined(ADC_CHANNEL_VBAT) && MICROPY_HW_ENABLE_ADC
 
 static inline void adc_deselect_vbat(ADC_TypeDef *adc, uint32_t channel) {
     (void)adc;
