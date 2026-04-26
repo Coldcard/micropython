@@ -136,20 +136,23 @@ static const flash_layout_t flash_layout[] = {
 
 #elif defined(STM32L4S5xx)
 
-// as defined stm32lib/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_flash.h
-// - operating in single-bank mode (DBANK=0), total 2M; 8k pages
-// Use the homogeneous form: the get_bank() / get_page() code path below
-// (for L4 with SYSCFG_MEMRMP_FB_MODE) references FLASH_LAYOUT_START_ADDR
-// and FLASH_LAYOUT_SECTOR_SIZE, so the layout must be expressed as macros.
-// Alternative (non-homogeneous array) approach kept here for reference:
-// #define FLASH_LAYOUT_IS_HOMOGENEOUS (0)
-// static const flash_layout_t flash_layout[] = {
-//     { (uint32_t)FLASH_BASE, 0x2000, (2<<20)/0x2000 },
-// };
+// STM32L4S5xx: 2 MB total, dual-bank (DBANK=1) with 4 KB pages.
+// Verified at runtime via FLASH->OPTR bit 22 (DBANK) = 1 on Q1/Mk4.
+// In dual-bank mode the HAL macros agree:
+//   FLASH_BANK_SIZE  = FLASH_SIZE >> 1 = 1 MB
+//   FLASH_PAGE_SIZE  = 0x1000          (per stm32l4xx_hal_flash.h)
+// The flash_get_sector_info() / get_bank() / get_page() math (selected by
+// the STM32L4 + SYSCFG_MEMRMP_FB_MODE branch below) then produces correct
+// physical addresses for both banks.
+//
+// NOTE: an earlier revision of this case used 0x2000 sectors (single-bank
+// DBANK=0 assumption). That made get_page() return half the page index it
+// should, so the flash_bdev cache committed to the wrong physical sector
+// and settings did not survive reboot.
 #define FLASH_LAYOUT_IS_HOMOGENEOUS (1)
 #define FLASH_LAYOUT_START_ADDR     (FLASH_BASE)
-#define FLASH_LAYOUT_SECTOR_SIZE    (0x2000)
-#define FLASH_LAYOUT_NUM_SECTORS    ((2 << 20) / 0x2000)
+#define FLASH_LAYOUT_SECTOR_SIZE    (0x1000)
+#define FLASH_LAYOUT_NUM_SECTORS    ((2 << 20) / 0x1000)
 
 #elif defined(STM32G0) || defined(STM32G4) || defined(STM32L0) || defined(STM32L4) || defined(STM32WB) || defined(STM32WL)
 
