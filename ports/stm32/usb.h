@@ -43,6 +43,8 @@
 #define USBD_PID_CDC_MSC_HID (0x9808)
 #define USBD_PID_CDC2_MSC_HID (0x9809)
 #define USBD_PID_CDC3_MSC_HID (0x980a)
+#define USBD_PID_HID     (0x980b)
+#define USBD_PID_MSC_HID (0x980c)
 
 typedef enum {
     PYB_USB_STORAGE_MEDIUM_NONE = 0,

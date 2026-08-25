@@ -504,6 +504,19 @@ int USBD_SelectMode(usbd_cdc_msc_hid_state_t *usbd, uint32_t mode, USBD_HID_Mode
             num_itf = 1;
             break;
 
+        #if MICROPY_HW_USB_HID
+        case USBD_MODE_MSC_HID:
+            n += make_msc_desc(d + n);
+            usbd->hid->desc = d + n;
+            n += make_hid_desc_ep(d + n, hid_info, HID_IFACE_NUM_WITH_MSC, HID_IN_EP_WITH_MSC, HID_OUT_EP_WITH_MSC);
+            usbd->hid->in_ep = HID_IN_EP_WITH_MSC;
+            usbd->hid->out_ep = HID_OUT_EP_WITH_MSC;
+            usbd->hid->iface_num = HID_IFACE_NUM_WITH_MSC;
+            usbd->hid->report_desc = hid_info->report_desc;
+            num_itf = 2;
+            break;
+        #endif
+
         case USBD_MODE_CDC_MSC:
             n += make_msc_desc(d + n);
             n += make_cdc_desc(d + n, 1, CDC_IFACE_NUM_WITH_MSC);
@@ -612,6 +625,16 @@ int USBD_SelectMode(usbd_cdc_msc_hid_state_t *usbd, uint32_t mode, USBD_HID_Mode
         #endif
 
         #if MICROPY_HW_USB_HID
+        case USBD_MODE_HID:
+            usbd->hid->desc = d + n;
+            n += make_hid_desc(d + n, hid_info, HID_IFACE_NUM_WITH_CDC);
+            usbd->hid->in_ep = HID_IN_EP_WITH_CDC;
+            usbd->hid->out_ep = HID_OUT_EP_WITH_CDC;
+            usbd->hid->iface_num = HID_IFACE_NUM_WITH_CDC;
+            usbd->hid->report_desc = hid_info->report_desc;
+            num_itf = 1;
+            break;
+
         case USBD_MODE_CDC_HID:
             usbd->hid->desc = d + n;
             n += make_hid_desc(d + n, hid_info, HID_IFACE_NUM_WITH_CDC);
@@ -630,15 +653,6 @@ int USBD_SelectMode(usbd_cdc_msc_hid_state_t *usbd, uint32_t mode, USBD_HID_Mode
             usbd->cdc[0]->iface_num = CDC_IFACE_NUM_ALONE;
             num_itf = 2;
             break;
-
-            /*
-            // not implemented
-        case USBD_MODE_MSC_HID:
-            hid_in_ep = HID_IN_EP_WITH_MSC;
-            hid_out_ep = HID_OUT_EP_WITH_MSC;
-            hid_iface_num = HID_IFACE_NUM_WITH_MSC;
-            break;
-            */
 
         default:
             // mode not supported
@@ -1122,6 +1136,7 @@ static uint8_t *USBD_CDC_MSC_HID_GetCfgDesc(USBD_HandleTypeDef *pdev, uint16_t *
     uint8_t *msc_desc = NULL;
     switch (usbd->usbd_mode & USBD_MODE_IFACE_MASK) {
         #if MICROPY_HW_USB_MSC
+        case USBD_MODE_MSC_HID:
         case USBD_MODE_MSC:
             msc_desc = usbd->usbd_config_desc + MSC_TEMPLATE_MSC_DESC_OFFSET;
             break;
