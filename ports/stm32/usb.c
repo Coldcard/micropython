@@ -378,6 +378,8 @@ usbd_cdc_itf_t *usb_vcp_get(int idx) {
     pyb.usb_mode(None)      # disable USB
     pyb.usb_mode('VCP')     # enable with VCP interface
     pyb.usb_mode('VCP+MSC') # enable with VCP and MSC interfaces
+    pyb.usb_mode('HID')     # enable with HID interface
+    pyb.usb_mode('MSC+HID') # enable with MSC and HID interfaces
     pyb.usb_mode('VCP+HID') # enable with VCP and HID, defaulting to mouse protocol
     pyb.usb_mode('VCP+HID', vid=0xf055, pid=0x9800) # specify VID and PID
     pyb.usb_mode('VCP+HID', hid=pyb.hid_mouse)
@@ -544,6 +546,20 @@ STATIC mp_obj_t pyb_usb_mode(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
             pid = USBD_PID_CDC;
         }
         mode = USBD_MODE_CDC;
+    #if MICROPY_HW_USB_HID
+    } else if (strcmp(mode_str, "HID") == 0) {
+        if (pid == -1) {
+            pid = USBD_PID_HID;
+        }
+        mode = USBD_MODE_HID;
+    #if MICROPY_HW_USB_MSC
+    } else if (strcmp(mode_str, "MSC+HID") == 0) {
+        if (pid == -1) {
+            pid = USBD_PID_MSC_HID;
+        }
+        mode = USBD_MODE_MSC_HID;
+    #endif
+    #endif
     } else if (strcmp(mode_str, "MSC") == 0) {
         if (pid == -1) {
             pid = USBD_PID_MSC;
