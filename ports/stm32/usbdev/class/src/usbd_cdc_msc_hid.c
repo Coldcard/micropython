@@ -626,6 +626,8 @@ int USBD_SelectMode(usbd_cdc_msc_hid_state_t *usbd, uint32_t mode, USBD_HID_Mode
 
         #if MICROPY_HW_USB_HID
         case USBD_MODE_HID:
+            // Standalone HID uses the same interface and endpoints as the HID part
+            // of CDC+HID (interface 0 and endpoint 1), so reuse that layout here.
             usbd->hid->desc = d + n;
             n += make_hid_desc(d + n, hid_info, HID_IFACE_NUM_WITH_CDC);
             usbd->hid->in_ep = HID_IN_EP_WITH_CDC;
