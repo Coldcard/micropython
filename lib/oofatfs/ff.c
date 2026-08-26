@@ -4116,7 +4116,7 @@ FRESULT f_lseek (
     DWORD clst, bcs, nsect;
     FSIZE_t ifptr;
 #if FF_USE_FASTSEEK
-    DWORD cl, pcl, ncl, tcl, dsc, tlen, ulen, *tbl;
+    DWORD cl, pcl, ncl, nclst, tcl, dsc, tlen, ulen, *tbl;
 #endif
 
     res = validate(&fp->obj, &fs);      /* Check validity of the file object */
@@ -4132,7 +4132,7 @@ FRESULT f_lseek (
     if (fp->cltbl) {    /* Fast seek */
         if (ofs == CREATE_LINKMAP) {    /* Create CLMT */
             tbl = fp->cltbl;
-            tlen = *tbl++; ulen = 2;    /* Given table size and required table size */
+            tlen = *tbl++; ulen = 2; nclst = 0;    /* Given table size and required table size */
             cl = fp->obj.sclust;        /* Origin of the chain */
             if (cl != 0) {
                 do {
@@ -4140,6 +4140,7 @@ FRESULT f_lseek (
                     tcl = cl; ncl = 0; ulen += 2;   /* Top, length and used items */
                     do {
                         pcl = cl; ncl++;
+                        if (++nclst > fs->n_fatent) ABORT(fs, FR_INT_ERR);  /* Abort a cyclic chain */
                         cl = get_fat(&fp->obj, cl);
                         if (cl <= 1) ABORT(fs, FR_INT_ERR);
                         if (cl == 0xFFFFFFFF) ABORT(fs, FR_DISK_ERR);
